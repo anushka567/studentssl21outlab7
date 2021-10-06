@@ -68,12 +68,21 @@ public class ScotlandYard implements Runnable{
 			try{
 				//INITIALISATION: get the game going
 				Socket socket = null;
-				boolean fugitiveIn;
+				boolean fugitiveIn=false;
 				board.dead=false;
 				// listen for a client to play fugitive, and spawn the moderator.
 				// here, it is actually ok to edit this.board.dead, because the game hasn't begun
 				do{
-					
+					try {
+						socket=server.accept();
+						threadPool.execute(new ServerThread(board, -1, socket, port, gamenumber));
+						fugitiveIn=true;
+					} 
+					catch (SocketTimeoutException t){
+						if(!board.dead){
+							continue;
+						}                          	
+					}	
 				} while (!fugitiveIn);
 				// Spawn a thread to run the Fugitive
 				// Spawn the moderator
