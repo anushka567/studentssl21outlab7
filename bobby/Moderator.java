@@ -22,14 +22,16 @@ public class Moderator implements Runnable{
 				2) one needs a permit to modify thread info
 
 				*/
-                                          
+                board.moderatorEnabler.acquire();
+				board.threadInfoProtector.acquire();                       
                                              
 
-
+				board.totalThreads-=board.quitThreads;
+				
 				/* 
 				look at the thread info, and decide how many threads can be 
 				permitted to play next round
-
+				
 				playingThreads: how many began last round
 				quitThreads: how many quit in the last round
 				totalThreads: how many are ready to play next round
@@ -44,17 +46,18 @@ public class Moderator implements Runnable{
 				//base case
 				
 				if (this.board.embryo){
-					                              
-                                        
-                                   
-                                              
 					continue;
 				}
 				
 				
 				//find out how many newbies
-				int newbies = ;
+				int newbies = board.totalThreads-board.playingThreads;
+				
 
+				if(board.totalThreads==0){
+					board.dead=true;
+					board.moderatorEnabler.release();
+				}
 
 				/*
 				If there are no threads at all, it means Game Over, and there are no 
@@ -72,7 +75,7 @@ public class Moderator implements Runnable{
 				
 				/* 
 				If we have come so far, the game is afoot.
-
+				
 				totalThreads is accurate. 
 				Correct playingThreads
 				reset quitThreads
@@ -80,8 +83,11 @@ public class Moderator implements Runnable{
 
 				Release permits for threads to play, and the permit to modify thread info
 				*/
+				
+				board.playingThreads=board.totalThreads;
+				board.quitThreads=0;
 
-				                                                    
+				board.threadInfoProtector.release();                                               
                                
     
                                              
