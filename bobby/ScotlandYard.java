@@ -75,8 +75,10 @@ public class ScotlandYard implements Runnable{
 				do{
 					try {
 						socket=server.accept();
+						board.totalThreads++;
 						threadPool.execute(new ServerThread(board, -1, socket, port, gamenumber));
 						fugitiveIn=true;
+						
 					} 
 					catch (SocketTimeoutException t){
 						if(!board.dead){
@@ -84,8 +86,12 @@ public class ScotlandYard implements Runnable{
 						}                          	
 					}	
 				} while (!fugitiveIn);
+				
 				// Spawn a thread to run the Fugitive
 				// Spawn the moderator
+				
+				threadPool.execute(new Moderator(board));
+				board.threadInfoProtector.acquire();
 				while (true){
 					try {
 						socket=server.accept();
@@ -95,12 +101,17 @@ public class ScotlandYard implements Runnable{
 							continue;
 						}                          	
 					}
-					board.threadInfoProtector.acquire();
 					int id=board.getAvailableID();
-					if(id==-1 || board.dead){
+					System.out.println(id);
+					if(board.dead){
 						this.board.threadInfoProtector.release();
 						break;
-					}else{
+					}else if(id==-1){
+						this.board.threadInfoProtector.release();
+						continue;
+					}
+					else{
+						// System.out.println("Hello\n");
 						board.totalThreads++;
 						threadPool.execute(new ServerThread(board, id, socket, port, gamenumber));	
 						this.board.threadInfoProtector.release();
@@ -124,11 +135,8 @@ public class ScotlandYard implements Runnable{
 			}
 			catch (IOException i){
 				return;
-			}
-			
-		}
-
-		
+			}		
+		}	
 	}
 
 	public static void main(String[] args) {
