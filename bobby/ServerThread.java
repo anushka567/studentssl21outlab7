@@ -304,7 +304,7 @@ public class ServerThread implements Runnable {
 					indicator=indicator.replace(";","");					
 					if (!indicator.equals("Play")) {
 						// Proceed simillarly to IOException
-						quit=true;
+						client_quit=true;
 					}
 				}
 
@@ -316,7 +316,7 @@ public class ServerThread implements Runnable {
 				 * everything that could make a thread quit has happened now, look at the quit
 				 * flag, and, if true, make changes in totalThreads and quitThreads
 				 */
-				if(quit){
+				if(client_quit){
 					try {
 						board.threadInfoProtector.acquire();
 					} catch (InterruptedException e) {
@@ -360,7 +360,7 @@ public class ServerThread implements Runnable {
 				 * 
 				 * If you quit while reading, now is the time to erase the player
 				 */
-				if(quit){
+				if(client_quit){
 					if(quit_while_reading){
 						board.erasePlayer(id);
 					}
