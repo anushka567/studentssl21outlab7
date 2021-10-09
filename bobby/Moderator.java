@@ -20,11 +20,9 @@ public class Moderator implements Runnable{
 				
 				1) the moderator itself needs a permit to run, see Board
 				2) one needs a permit to modify thread info
-
 				*/
                 board.moderatorEnabler.acquire();
-				board.threadInfoProtector.acquire();                       
-                                             
+				board.threadInfoProtector.acquire();                                      
 
 				board.totalThreads-=board.quitThreads;
 				
@@ -35,11 +33,8 @@ public class Moderator implements Runnable{
 				playingThreads: how many began last round
 				quitThreads: how many quit in the last round
 				totalThreads: how many are ready to play next round
-
 				RECALL the invariant mentioned in Board.java
-
 				T = P - Q + N
-
 				P - Q is guaranteed to be non-negative.
 				*/
 
@@ -57,13 +52,14 @@ public class Moderator implements Runnable{
 				if(board.totalThreads==0){
 					board.dead=true;
 					board.moderatorEnabler.release();
+					board.threadInfoProtector.release();
+					break;
 				}
 
 				/*
 				If there are no threads at all, it means Game Over, and there are no 
 				more new threads to "reap". dead has been set to true, then 
 				the server won't spawn any more threads when it gets the lock.
-
 				Thus, the moderator's job will be done, and this thread can terminate.
 				As good practice, we will release the "lock" we held. 
 				*/
@@ -79,18 +75,29 @@ public class Moderator implements Runnable{
 				totalThreads is accurate. 
 				Correct playingThreads
 				reset quitThreads
-
-
 				Release permits for threads to play, and the permit to modify thread info
 				*/
 				
-				board.playingThreads=board.totalThreads;
-				board.quitThreads=0;
+				// board.playingThreads=board.totalThreads;
+				// board.quitThreads=0;
 
-				board.threadInfoProtector.release();                                               
+				// board.threadInfoProtector.release();                                               
                                
-    
-                                             
+				board.playingThreads=board.totalThreads;
+				// System.out.println("Total Threads "+board.totalThreads);
+				// System.out.println("Playing threads "+board.playingThreads);
+				for(int i=0;i<board.playingThreads;i++){
+					board.reentry.release();
+				}
+				for(int i=0;i<newbies;i++){
+					board.registration.release();
+				}
+				
+				board.quitThreads=0;
+				// System.out.println("reached here");
+				board.threadInfoProtector.release();                                               
+				// System.out.println("reached here");
+				
                                                           
                                              
 			}
