@@ -5,8 +5,7 @@ import java.io.*;
 import java.util.*;
 
 import java.util.concurrent.Semaphore;
-
-
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -27,11 +26,11 @@ public class ScotlandYard implements Runnable{
 	}
 
 	public void run(){
-		while (true){
+		while (true){			
 			this.gamenumber++;
 			Thread tau = new Thread(new ScotlandYardGame(this.port, this.gamenumber));
 			tau.start();
-			try{
+			try{	
 				tau.join();
 			}
 			catch (InterruptedException e){
@@ -59,6 +58,8 @@ public class ScotlandYard implements Runnable{
 				server.setSoTimeout(5000);
 			}
 			catch (IOException i) {
+				System.err.println("An IOException was caught: " + i.getMessage());
+				i.printStackTrace();
 				return;
 			}
 			this.threadPool = Executors.newFixedThreadPool(10);
@@ -121,7 +122,9 @@ public class ScotlandYard implements Runnable{
 					// if you can't, drop connection (game full, game dead), continue, or break.
 					// if you can, spawn a thread, assign an ID, increment the totalThreads
 					// don't forget to release lock when done!                             
-				}		
+				}
+				server.close();		
+				threadPool.shutdown();
 				// reap the moderator thread, close the server, 
 				// kill threadPool (Careless Whispers BGM stops)
 				System.out.println(String.format("Game %d:%d Over", this.port, this.gamenumber));
