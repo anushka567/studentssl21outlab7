@@ -28,6 +28,7 @@ public class ScotlandYard implements Runnable{
 
 	public void run(){
 		while (true){
+			this.gamenumber++;
 			Thread tau = new Thread(new ScotlandYardGame(this.port, this.gamenumber));
 			tau.start();
 			try{
@@ -37,7 +38,7 @@ public class ScotlandYard implements Runnable{
 				return;
 			}
 			// System.out.println(gamenumber);
-			this.gamenumber++;
+			
 		}
 	}
 
@@ -89,9 +90,7 @@ public class ScotlandYard implements Runnable{
 				
 				// Spawn a thread to run the Fugitive
 				// Spawn the moderator
-				
 				threadPool.execute(new Moderator(board));
-				board.threadInfoProtector.acquire();
 				while (true){
 					try {
 						socket=server.accept();
@@ -102,19 +101,19 @@ public class ScotlandYard implements Runnable{
 						}                          	
 					}
 					int id=board.getAvailableID();
-					System.out.println(id);
+					
 					if(board.dead){
-						this.board.threadInfoProtector.release();
 						break;
 					}else if(id==-1){
-						this.board.threadInfoProtector.release();
 						continue;
 					}
 					else{
 						// System.out.println("Hello\n");
+						board.threadInfoProtector.acquire();
 						board.totalThreads++;
 						threadPool.execute(new ServerThread(board, id, socket, port, gamenumber));	
 						this.board.threadInfoProtector.release();
+						this.board.moderatorEnabler.release();
 						continue;
 					}
 					
