@@ -24,7 +24,7 @@ public class Moderator implements Runnable{
                 board.moderatorEnabler.acquire();
 				board.threadInfoProtector.acquire();                                      
 
-				board.totalThreads-=board.quitThreads;
+				// board.totalThreads-=board.quitThreads;
 				
 				/* 
 				look at the thread info, and decide how many threads can be 
@@ -46,7 +46,7 @@ public class Moderator implements Runnable{
 				
 				
 				//find out how many newbies
-				int newbies = board.totalThreads-board.playingThreads;
+				int newbies = board.totalThreads-board.playingThreads+board.quitThreads;
 				
 
 				if(board.totalThreads==0){
