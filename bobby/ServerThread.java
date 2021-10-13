@@ -6,6 +6,8 @@ import java.util.*;
 
 import java.util.concurrent.Semaphore;
 
+import javax.swing.text.StyledEditorKit;
+
 public class ServerThread implements Runnable {
 	private Board board;
 	private int id;
@@ -51,6 +53,15 @@ public class ServerThread implements Runnable {
 				}
 			} 
 			catch (Exception e){
+				try {
+					board.threadInfoProtector.acquire();	
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
+				board.totalThreads--;
+				board.threadInfoProtector.release();
+				
+				//TODO correct it 
 				return;
 			}
 			// catch (IOException i) {
@@ -140,12 +151,19 @@ public class ServerThread implements Runnable {
 					socket.close();
 					input.close();
 					output.close();
-					quit_while_reading=true;
+					quit=true;
 					client_quit=true;
 					
 					if(id==-1){
 						board.dead=true;
 					}
+					try {
+						board.threadInfoProtector.acquire();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					board.erasePlayer(id);
+					board.threadInfoProtector.release();
 					// rage quit (this would happen if buffer is closed due to SIGINT (Ctrl+C) from
 					// Client), set flags
 					// release everything socket related
@@ -160,7 +178,15 @@ public class ServerThread implements Runnable {
 					if(id==-1){
 						board.dead=true;
 					}
+					try {
+						board.threadInfoProtector.acquire();
+						
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
 					board.erasePlayer(id);
+					board.threadInfoProtector.release();
+					
 					// client wants to disconnect, set flags
 					// release everything socket related
 				}
@@ -225,10 +251,6 @@ public class ServerThread implements Runnable {
 					}else{
 						board.moveDetective(id, target);
 					}
-				}else{
-					if(quit_while_reading){
-						board.erasePlayer(id);
-					}
 				}
 					
 				/*
@@ -244,6 +266,11 @@ public class ServerThread implements Runnable {
 				 * must acquire a permit to cross. The last thread to hit the barrier can
 				 * release permits for them all.
 				 */
+					try {
+						board.countProtector.acquire();
+					} catch (InterruptedException e1) {
+						e1.printStackTrace();
+					}
 					board.count++;
 					if(board.count==board.playingThreads){
 						for(int i=0;i<board.playingThreads;i++){
@@ -251,12 +278,14 @@ public class ServerThread implements Runnable {
 						}
 						board.count=0;
 					}
+					board.countProtector.release();
 					try {
 						board.barrier1.acquire();
 						// System.out.println("Crosssed barrier 1 ...");
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
+					
 				/*
 				 * ________________________________________________________________________________________
 				 * 
@@ -304,7 +333,12 @@ public class ServerThread implements Runnable {
 					indicator=indicator.replace(";","");					
 					if (!indicator.equals("Play")) {
 						// Proceed simillarly to IOException
-						client_quit=true;
+						board.erasePlayer(id);
+						socket.close();
+						input.close();
+						output.close();
+						quit_while_reading=true;
+						quit=true;
 					}
 				}
 
@@ -316,36 +350,48 @@ public class ServerThread implements Runnable {
 				 * everything that could make a thread quit has happened now, look at the quit
 				 * flag, and, if true, make changes in totalThreads and quitThreads
 				 */
-				if(client_quit){
+				if(quit){
 					try {
 						board.threadInfoProtector.acquire();
+						
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
 					board.totalThreads--;
 					board.quitThreads++;
+					
 					board.threadInfoProtector.release();
+				
 				}
 				/*
 				 * __________________________________________________________________________________
-				 * PART 6B______________________________ second part of the cyclic barrier that
-				 * makes it reusable
-				 * 
-				 * our threads must wait together before proceeding to the next round
-				 * 
-				 * Reuse count to keep track of how many threads hit this barrier2
-				 * 
-				 * The code is similar. However, the last thread to hit this barrier must also
-				 * permit the moderator to run
+				 * PART 6B______________________________ second part of the cyclic barrier
+				that makes it reusable
+				
+				our threads must wait together before proceeding to the next round
+				Reuse count to keep track of how many threads hit this barrier2 
+				The code is similar. 
 				 */
+				try {
+					board.countProtector.acquire();
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
 				board.count++;
+				// System.out.println("Have to release moderator enabler inside if");
+				// System.out.println("Count "+board.count);
+				// System.out.println("Playing threads "+board.playingThreads);
 				if(board.count==board.playingThreads){
 					for(int i=0;i<board.playingThreads;i++){
+						// System.out.println("Have to release moderator enabler after for");
 						board.barrier2.release();
 					}
+					// System.out.println("Have to release moderator enabler");
 					board.moderatorEnabler.release();
+					// System.out.println("released moderator enabler");
 					board.count=0;
 				}
+				board.countProtector.release();
 				try {
 					board.barrier2.acquire();
 					// System.out.println("Crosssed barrier 1 ...");
@@ -355,12 +401,13 @@ public class ServerThread implements Runnable {
 
 				/*
 				 * __________________________________________________________________________________
-				 * PART 6C_________________________________ actually finishing off a thread that
-				 * decided to quit
-				 * 
-				 * If you quit while reading, now is the time to erase the player
+				 * PART 6C_________________________________ actually finishing off a thread
+				that decided to quit
+				However, the last thread to hit this must issue one
+				permit for the moderator to run
+				If all else fails use the barriers again
 				 */
-				if(client_quit){
+				if(quit){
 					if(quit_while_reading){
 						board.erasePlayer(id);
 					}
