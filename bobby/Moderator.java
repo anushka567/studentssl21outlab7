@@ -21,9 +21,10 @@ public class Moderator implements Runnable{
 				1) the moderator itself needs a permit to run, see Board
 				2) one needs a permit to modify thread info
 				*/
+				// System.out.println("Stuck");
                 board.moderatorEnabler.acquire();
-				board.threadInfoProtector.acquire();                                      
-
+				board.threadInfoProtector.acquire();                                   
+				// System.out.println("UnStuck");
 				// board.totalThreads-=board.quitThreads;
 				
 				/* 
@@ -41,6 +42,8 @@ public class Moderator implements Runnable{
 				//base case
 				
 				if (this.board.embryo){
+					board.moderatorEnabler.release();
+					board.threadInfoProtector.release();
 					continue;
 				}
 				
@@ -48,11 +51,14 @@ public class Moderator implements Runnable{
 				//find out how many newbies
 				int newbies = board.totalThreads-board.playingThreads+board.quitThreads;
 				
-
+				// System.out.println(board.playingThreads);
+				// System.out.println(board.totalThreads);
+				// System.out.println(board.quitThreads);
 				if(board.totalThreads==0){
 					board.dead=true;
 					board.moderatorEnabler.release();
 					board.threadInfoProtector.release();
+					
 					break;
 				}
 
@@ -95,7 +101,8 @@ public class Moderator implements Runnable{
 				
 				board.quitThreads=0;
 				// System.out.println("reached here");
-				board.threadInfoProtector.release();                                               
+				board.threadInfoProtector.release(); 
+	                                              
 				// System.out.println("reached here");
 				
                                                           
