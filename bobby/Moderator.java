@@ -41,6 +41,7 @@ public class Moderator implements Runnable{
 				//base case
 				
 				if (this.board.embryo){
+					board.playingThreads=1;
 					board.registration.release();
 					board.reentry.release();
 					board.threadInfoProtector.release();
@@ -83,6 +84,7 @@ public class Moderator implements Runnable{
 				// board.threadInfoProtector.release();                                               
                                
 				board.playingThreads=board.totalThreads;
+				board.quitThreads=0;
 				// System.out.println("Total Threads "+board.totalThreads);
 				// System.out.println("Playing threads "+board.playingThreads);
 				for(int i=0;i<board.playingThreads;i++){
@@ -91,7 +93,7 @@ public class Moderator implements Runnable{
 				for(int i=0;i<newbies;i++){
 					board.registration.release();
 				}				
-				board.quitThreads=0;
+				
 				board.threadInfoProtector.release(); 
 	                                              
 				
