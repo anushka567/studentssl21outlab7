@@ -207,9 +207,7 @@ public class ServerThread implements Runnable {
 				 //TODO timestamp 59:35
 				
 				try {
-					// System.out.println("Board reentry permissions required");
 					board.reentry.acquire();
-					// System.out.println("Board reentry permissions aquired");
 				} catch (InterruptedException e) {	
 					e.printStackTrace();
 				}
@@ -246,7 +244,9 @@ public class ServerThread implements Runnable {
 						board.moveDetective(id, target);
 					}
 				}else{
+					board.threadInfoProtector.acquire();
 					board.erasePlayer(id);
+					board.threadInfoProtector.release();
 				}
 					
 				/*
@@ -309,12 +309,17 @@ public class ServerThread implements Runnable {
 					// TODO in case of IO Exception, off with the thread
 					catch (Exception i) {
 						// set flags
-						
+						socket.close();
+						input.close();
+						output.close();
 						// If you are a Fugitive you can't edit the board, but you can set dead to true
 						if (this.id == -1) {
-
+							board.threadInfoProtector.acquire();
+							board.dead=true;
+							board.threadInfoProtector.release();
 						}
-
+						quit_while_reading=true;
+						quit=true;
 						// release everything socket related
 
 					}
@@ -404,7 +409,9 @@ public class ServerThread implements Runnable {
 				 */
 				if(quit){
 					if(quit_while_reading){
+						board.threadInfoProtector.acquire();
 						board.erasePlayer(id);
+						board.threadInfoProtector.release();
 					}
 					break;
 				}
