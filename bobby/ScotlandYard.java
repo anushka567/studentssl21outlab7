@@ -71,26 +71,27 @@ public class ScotlandYard implements Runnable{
 				//INITIALISATION: get the game going
 				Socket socket = null;
 				boolean fugitiveIn=false;
-				board.dead=false;
 				// listen for a client to play fugitive, and spawn the moderator.
 				// here, it is actually ok to edit this.board.dead, because the game hasn't begun
 				do{
 					try {
 						socket=server.accept();
+						board.threadInfoProtector.acquire();
+						board.dead=false;
 						board.totalThreads++;
-						threadPool.execute(new ServerThread(board, -1, socket, port, gamenumber));
+						board.threadInfoProtector.release();
+						threadPool.execute(new Moderator(board));
 						fugitiveIn=true;			
 					} 
 					catch (SocketTimeoutException t){
-						if(!board.dead){
-							continue;
-						}                          	
+						continue;                         	
 					}	
 				} while (!fugitiveIn);
-				
+				threadPool.execute(new ServerThread(board, -1, socket, port, gamenumber));		
+				// threadPool.execute(new Moderator(board));
 				// Spawn a thread to run the Fugitive
 				// Spawn the moderator
-				threadPool.execute(new Moderator(board));
+				
 				while (true){
 					try {
 						socket=server.accept();
@@ -104,19 +105,16 @@ public class ScotlandYard implements Runnable{
 					if(board.dead){
 						break;
 					}else if(id==-1){
+						// System.out.println("Yo");
 						continue;
 					}
 					else{
 						// System.out.println("Hello\n");
 						board.threadInfoProtector.acquire();
-						
-					
 						board.totalThreads++;
-						System.out.println(board.totalThreads);
+						// System.out.println(board.totalThreads);
 						threadPool.execute(new ServerThread(board, id, socket, port, gamenumber));	
-						this.board.threadInfoProtector.release();
-						
-						this.board.moderatorEnabler.release();
+						this.board.threadInfoProtector.release();						
 						continue;
 					}
 					
