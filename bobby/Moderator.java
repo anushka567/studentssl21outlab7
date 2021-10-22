@@ -25,7 +25,6 @@ public class Moderator implements Runnable{
                 board.moderatorEnabler.acquire();
 				board.threadInfoProtector.acquire();                                   
 				// System.out.println("UnStuck");
-				// board.totalThreads-=board.quitThreads;
 				
 				/* 
 				look at the thread info, and decide how many threads can be 
@@ -42,7 +41,8 @@ public class Moderator implements Runnable{
 				//base case
 				
 				if (this.board.embryo){
-					board.moderatorEnabler.release();
+					board.registration.release();
+					board.reentry.release();
 					board.threadInfoProtector.release();
 					continue;
 				}
@@ -50,15 +50,8 @@ public class Moderator implements Runnable{
 				
 				//find out how many newbies
 				int newbies = board.totalThreads-board.playingThreads+board.quitThreads;
-				
-				// System.out.println(board.playingThreads);
-				// System.out.println(board.totalThreads);
-				// System.out.println(board.quitThreads);
 				if(board.totalThreads==0){
-					board.dead=true;
-					board.moderatorEnabler.release();
-					board.threadInfoProtector.release();
-					
+					board.threadInfoProtector.release();		
 					break;
 				}
 
@@ -97,13 +90,10 @@ public class Moderator implements Runnable{
 				}
 				for(int i=0;i<newbies;i++){
 					board.registration.release();
-				}
-				
+				}				
 				board.quitThreads=0;
-				// System.out.println("reached here");
 				board.threadInfoProtector.release(); 
 	                                              
-				// System.out.println("reached here");
 				
                                                           
                                              
