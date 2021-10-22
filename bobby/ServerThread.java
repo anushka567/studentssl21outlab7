@@ -35,13 +35,14 @@ public class ServerThread implements Runnable {
 	public void run() {
 
 		try {
-			input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			output = new PrintWriter(socket.getOutputStream(), true);
+			
 			/*
 			 * PART 0_________________________________ Set the sockets up
 			 */
 
 			try {
+				input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+				output = new PrintWriter(socket.getOutputStream(), true);
 				if (this.id == -1) {
 					output.println(String.format(
 							"Welcome. You play Fugitive in Game %d:%d. You start on square 42. Make a move, and wait for feedback",
@@ -52,26 +53,23 @@ public class ServerThread implements Runnable {
 							this.id, this.port, this.gamenumber));
 				}
 			} 
-			catch (Exception e){
+			catch (IOException i) {
 				try {
 					board.threadInfoProtector.acquire();	
 				} catch (InterruptedException e1) {
 					e1.printStackTrace();
 				}
+				socket.close();
+				input.close();
+				output.close();
 				board.totalThreads--;
 				board.threadInfoProtector.release();
-				
-				//TODO correct it 
+				/* there's no use keeping this thread, so undo what the server did when it
+				 * decided to run it
+				 */
+
 				return;
 			}
-			// catch (IOException i) {
-			// 	/*
-			// 	 * there's no use keeping this thread, so undo what the server did when it
-			// 	 * decided to run it
-			// 	 */
-
-			// 	return;
-			// }
 
 			// __________________________________________________________________________________________
 
@@ -115,8 +113,12 @@ public class ServerThread implements Runnable {
 				 */
 
 				if (this.id == -1 && !this.registered) {
+					// System.out.println("Installed fugitive");
+					board.registration.acquire();
+					board.reentry.acquire();
 					registered = true;
 					board.installPlayer(-1);
+					board.moderatorEnabler.release();
 					continue;
 				}
 
@@ -141,6 +143,11 @@ public class ServerThread implements Runnable {
 				try {
 					cmd = input.readLine();
 				} catch (IOException i) {
+					socket.close();
+					input.close();
+					output.close();
+					quit=true;
+					client_quit=true;
 					// set flags
 
 					// elease everything socket related
@@ -153,17 +160,6 @@ public class ServerThread implements Runnable {
 					output.close();
 					quit=true;
 					client_quit=true;
-					
-					if(id==-1){
-						board.dead=true;
-					}
-					try {
-						board.threadInfoProtector.acquire();
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-					board.erasePlayer(id);
-					board.threadInfoProtector.release();
 					// rage quit (this would happen if buffer is closed due to SIGINT (Ctrl+C) from
 					// Client), set flags
 					// release everything socket related
@@ -175,22 +171,10 @@ public class ServerThread implements Runnable {
 					output.close();
 					client_quit=true;	
 					quit=true;
-					if(id==-1){
-						board.dead=true;
-					}
-					try {
-						board.threadInfoProtector.acquire();
-						
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-					board.erasePlayer(id);
-					board.threadInfoProtector.release();
 					
 					// client wants to disconnect, set flags
 					// release everything socket related
 				}
-
 				else {
 					try {
 						target=Integer.parseInt(cmd);
@@ -219,23 +203,33 @@ public class ServerThread implements Runnable {
 				 * 
 				 * Note that installation of a Fugitive sets embryo to false
 				 */
+
+				 //TODO timestamp 59:35
+				
 				try {
-					// System.out.println("Board rentry permissions required");
+					// System.out.println("Board reentry permissions required");
 					board.reentry.acquire();
-					// System.out.println("Board rentry permissions aquired");
+					// System.out.println("Board reentry permissions aquired");
 				} catch (InterruptedException e) {	
 					e.printStackTrace();
 				}
 				if (!this.registered) {
-					try {
-						// System.out.println("Board registration permissions required");
-						board.registration.acquire();
-						// System.out.println("Board registration permissions aquired");
-						registered=true;
-						board.installPlayer(id);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
+					if(board.dead){
+						quit=true;
+						client_quit=true;
+						socket.close();
+						input.close();
+						output.close();
+					}else{
+						try {
+							// System.out.println("Installed detective..."+id);
+							board.registration.acquire();
+							registered=true;
+							board.installPlayer(id);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+					}					
 				}	
 
 				/*
@@ -251,6 +245,8 @@ public class ServerThread implements Runnable {
 					}else{
 						board.moveDetective(id, target);
 					}
+				}else{
+					board.erasePlayer(id);
 				}
 					
 				/*
@@ -273,10 +269,10 @@ public class ServerThread implements Runnable {
 					}
 					board.count++;
 					if(board.count==board.playingThreads){
+						// System.out.println("Playing threads..."+board.playingThreads+"  id......."+id);
 						for(int i=0;i<board.playingThreads;i++){
 							board.barrier1.release();
 						}
-						board.count=0;
 					}
 					board.countProtector.release();
 					try {
@@ -310,10 +306,10 @@ public class ServerThread implements Runnable {
 					try {
 						output.println(feedback);
 					}
-					// in case of IO Exception, off with the thread
+					// TODO in case of IO Exception, off with the thread
 					catch (Exception i) {
 						// set flags
-
+						
 						// If you are a Fugitive you can't edit the board, but you can set dead to true
 						if (this.id == -1) {
 
@@ -333,7 +329,7 @@ public class ServerThread implements Runnable {
 					indicator=indicator.replace(";","");					
 					if (!indicator.equals("Play")) {
 						// Proceed simillarly to IOException
-						board.erasePlayer(id);
+						// board.erasePlayer(id);
 						socket.close();
 						input.close();
 						output.close();
@@ -377,11 +373,11 @@ public class ServerThread implements Runnable {
 				} catch (InterruptedException e1) {
 					e1.printStackTrace();
 				}
-				board.count++;
+				board.count--;
 				// System.out.println("Have to release moderator enabler inside if");
 				// System.out.println("Count "+board.count);
 				// System.out.println("Playing threads "+board.playingThreads);
-				if(board.count==board.playingThreads){
+				if(board.count==0){
 					for(int i=0;i<board.playingThreads;i++){
 						// System.out.println("Have to release moderator enabler after for");
 						board.barrier2.release();
@@ -389,7 +385,6 @@ public class ServerThread implements Runnable {
 					// System.out.println("Have to release moderator enabler");
 					board.moderatorEnabler.release();
 					// System.out.println("released moderator enabler");
-					board.count=0;
 				}
 				board.countProtector.release();
 				try {
@@ -415,14 +410,11 @@ public class ServerThread implements Runnable {
 				}
 				
 			}
-		// } catch (InterruptedException ex) {
-		// 	return;
-		// } catch (IOException i) {
-		// 	return;
-		// }
-		 }  catch (IOException i) {
+		}  catch (IOException i) {
 				return;
-			}
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 
 }
