@@ -59,9 +59,10 @@ public class ServerThread implements Runnable {
 				} catch (InterruptedException e1) {
 					e1.printStackTrace();
 				}
-				socket.close();
 				input.close();
 				output.close();
+				socket.close();
+				
 				board.totalThreads--;
 				board.threadInfoProtector.release();
 				/* there's no use keeping this thread, so undo what the server did when it
@@ -143,9 +144,10 @@ public class ServerThread implements Runnable {
 				try {
 					cmd = input.readLine();
 				} catch (IOException i) {
-					socket.close();
 					input.close();
 					output.close();
+					socket.close();
+					
 					quit=true;
 					client_quit=true;
 					// set flags
@@ -155,9 +157,10 @@ public class ServerThread implements Runnable {
 				}
 
 				if (cmd == null) {
-					socket.close();
 					input.close();
 					output.close();
+					socket.close();
+					
 					quit=true;
 					client_quit=true;
 					// rage quit (this would happen if buffer is closed due to SIGINT (Ctrl+C) from
@@ -166,9 +169,9 @@ public class ServerThread implements Runnable {
 				}
 
 				else if (cmd.equals("Q")) {
-					socket.close();
 					input.close();
 					output.close();
+					socket.close();				
 					client_quit=true;	
 					quit=true;
 					
@@ -204,7 +207,7 @@ public class ServerThread implements Runnable {
 				 * Note that installation of a Fugitive sets embryo to false
 				 */
 
-				 //TODO timestamp 59:35
+				 
 				
 				try {
 					board.reentry.acquire();
@@ -215,9 +218,10 @@ public class ServerThread implements Runnable {
 					if(board.dead){
 						quit=true;
 						client_quit=true;
-						socket.close();
 						input.close();
 						output.close();
+						socket.close();
+						
 					}else{
 						try {
 							// System.out.println("Installed detective..."+id);
@@ -306,12 +310,13 @@ public class ServerThread implements Runnable {
 					try {
 						output.println(feedback);
 					}
-					// TODO in case of IO Exception, off with the thread
+					//in case of IO Exception, off with the thread
 					catch (Exception i) {
 						// set flags
-						socket.close();
 						input.close();
 						output.close();
+						socket.close();
+						
 						// If you are a Fugitive you can't edit the board, but you can set dead to true
 						if (this.id == -1) {
 							board.threadInfoProtector.acquire();
@@ -335,9 +340,15 @@ public class ServerThread implements Runnable {
 					if (!indicator.equals("Play")) {
 						// Proceed simillarly to IOException
 						// board.erasePlayer(id);
-						socket.close();
 						input.close();
 						output.close();
+						socket.close();
+						if (this.id == -1) {
+							board.threadInfoProtector.acquire();
+							board.dead=true;
+							board.threadInfoProtector.release();
+						}	
+						
 						quit_while_reading=true;
 						quit=true;
 					}
@@ -414,8 +425,7 @@ public class ServerThread implements Runnable {
 						board.threadInfoProtector.release();
 					}
 					break;
-				}
-				
+				}				
 			}
 		}  catch (IOException i) {
 				return;
