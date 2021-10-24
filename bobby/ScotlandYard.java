@@ -79,7 +79,7 @@ public class ScotlandYard implements Runnable{
 						board.threadInfoProtector.acquire();
 						board.dead=false;
 						board.totalThreads++;
-						threadPool.execute(new Moderator(board));
+						// threadPool.execute(new Moderator(board));
 						board.threadInfoProtector.release();
 						fugitiveIn=true;			
 					} 
@@ -88,7 +88,7 @@ public class ScotlandYard implements Runnable{
 					}	
 				} while (!fugitiveIn);
 				threadPool.execute(new ServerThread(board, -1, socket, port, gamenumber));		
-
+				threadPool.execute(new Moderator(board));
 				// threadPool.execute(new Moderator(board));
 				// Spawn a thread to run the Fugitive
 				// Spawn the moderator
